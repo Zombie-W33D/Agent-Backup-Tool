@@ -310,6 +310,22 @@ def gui_main():
             ttk.Button(pass_frame, text="Browse...", command=self._browse_pass_file_direct,
                        state="disabled").grid(row=3, column=2, padx=(6, 0), sticky="e")
 
+            # Keyfile save section (only relevant in Direct entry mode)
+            ttk.Label(pass_frame, text="Save as keyfile:").grid(
+                row=4, column=0, columnspan=2, sticky="w", pady=(8, 2))
+            self.keyfile_path = tk.StringVar(value=str(Path.home() / ".agent-backup-key"))
+            self.keyfile_entry = ttk.Entry(pass_frame, textvariable=self.keyfile_path,
+                                           width=40, state="disabled")
+            self.keyfile_entry.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(0, 2))
+            pass_frame.columnconfigure(0, weight=1)
+
+            self._browse_keyfile_btn = ttk.Button(pass_frame, text="Browse keyfile location...",
+                       command=self._browse_keyfile, state="disabled")
+            self._browse_keyfile_btn.grid(row=5, column=2, padx=(6, 0), sticky="e")
+            self._save_keyfile_btn = ttk.Button(pass_frame, text="Save passphrase as keyfile",
+                       command=self._save_keyfile, state="disabled")
+            self._save_keyfile_btn.grid(row=6, column=0, columnspan=2, sticky="w", pady=(2, 0))
+
             # --- Output section ---
             out_frame = ttk.LabelFrame(main, text="Output", padding=10)
             out_frame.pack(fill="x", pady=(0, 8))
@@ -358,9 +374,15 @@ def gui_main():
             if mode == "file":
                 self.pass_file_entry.config(state="readonly")
                 self.pass_direct_entry.config(state="disabled")
+                self.keyfile_entry.config(state="disabled")
+                self._browse_keyfile_btn.config(state="disabled")
+                self._save_keyfile_btn.config(state="disabled")
             else:
                 self.pass_file_entry.config(state="disabled")
                 self.pass_direct_entry.config(state="normal")
+                self.keyfile_entry.config(state="normal")
+                self._browse_keyfile_btn.config(state="normal")
+                self._save_keyfile_btn.config(state="normal")
 
         def _browse_repo(self):
             path = filedialog.askdirectory(title="Select Backup Repo Directory")
@@ -384,6 +406,30 @@ def gui_main():
                     self.pass_file_path.set(path)
                 except Exception as e:
                     messagebox.showerror("Error", f"Could not read passphrase file: {e}")
+
+        def _browse_keyfile(self):
+            path = filedialog.asksaveasfilename(
+                title="Select Keyfile Location",
+                defaultextension=".key",
+                filetypes=[("Key files", "*.key *.txt *.pass"), ("All files", "*")])
+            if path:
+                self.keyfile_path.set(path)
+
+        def _save_keyfile(self):
+            pf = self.pass_direct.get().strip()
+            if not pf:
+                messagebox.showwarning("Warning", "Enter a passphrase first (Direct entry mode).")
+                return
+            kf = Path(self.keyfile_path.get().strip() or str(Path.home() / ".agent-backup-key"))
+            try:
+                kf.parent.mkdir(parents=True, exist_ok=True)
+                kf.write_text(pf + "\n")
+                os.chmod(str(kf), 0o600)
+                self._log(f"Keyfile saved: {kf} (mode 600)")
+                self.status_var.set(f"Keyfile saved: {kf.name}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not save keyfile: {e}")
+                self._log(f"ERROR saving keyfile: {e}")
 
         def _browse_out(self):
             path = filedialog.askdirectory(title="Select Output Directory")
