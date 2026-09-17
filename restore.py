@@ -43,6 +43,8 @@ def gpg_decrypt(gpg_file: Path, out_file: Path, passphrase_file: Path = None,
     Returns:
         Path to the decrypted file
     """
+    # Ensure output directory exists
+    out_file.parent.mkdir(parents=True, exist_ok=True)
     cmd = ["gpg", "--decrypt", "--batch", "--yes", "--output", str(out_file)]
 
     if passphrase_file:
